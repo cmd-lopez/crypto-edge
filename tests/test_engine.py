@@ -190,9 +190,11 @@ def test_strategy_only_sees_bars_up_to_decision_date():
 
 
 class Momentum:
+    """Weights are a continuous function of the latest bars, so any leaked bar changes them."""
+
     def target_weights(self, view, d, held):
         ret = view.close.iloc[-1] / view.close.iloc[-8] - 1 if len(view.close) >= 8 else view.close.iloc[-1] * 0
-        return (ret.nlargest(2) > -1).astype(float) * 0.4
+        return 0.05 + 0.1 / (1 + np.exp(-10 * ret))
 
     def exits(self, view, d, held):
         r1 = view.close.iloc[-1] / view.close.iloc[-2] - 1 if len(view.close) >= 2 else None
@@ -204,8 +206,8 @@ def test_look_ahead_future_perturbation_leaves_past_decisions_unchanged():
     n, k = 120, 70
     fr = {f"X{i}-USD": frame("2024-01-01", 100 * np.exp(np.cumsum(rng.normal(0, 0.04, n))))
           for i in range(6)}
-    base = run(panel(fr), Momentum(), ts(10), ts(n - 1), lambda d: d.dayofweek == 6,
-               CostModel(), Limits())
+    # rebalance daily so a decision exists on every day, including the cut day k
+    base = run(panel(fr), Momentum(), ts(10), ts(n - 1), lambda d: True, CostModel(), Limits())
     fr2 = {}
     for key, f in fr.items():
         f = f.copy()
@@ -213,9 +215,9 @@ def test_look_ahead_future_perturbation_leaves_past_decisions_unchanged():
         for col in ("open", "high", "low", "close"):
             f.loc[k + 1:, col] = f.loc[k + 1:, col].to_numpy() * shock
         fr2[key] = f
-    pert = run(panel(fr2), Momentum(), ts(10), ts(n - 1), lambda d: d.dayofweek == 6,
-               CostModel(), Limits())
+    pert = run(panel(fr2), Momentum(), ts(10), ts(n - 1), lambda d: True, CostModel(), Limits())
     pd.testing.assert_series_equal(base.returns.loc[:ts(k)], pert.returns.loc[:ts(k)])
     early = [d for d in base.decisions if d <= ts(k)]
-    assert early and all(base.decisions[d].equals(pert.decisions[d]) for d in early)
+    assert ts(k) in early and all(base.decisions[d].equals(pert.decisions[d]) for d in early)
+    assert not base.decisions[ts(k + 1)].equals(pert.decisions[ts(k + 1)])
     assert not base.returns.loc[ts(k + 2):].equals(pert.returns.loc[ts(k + 2):])

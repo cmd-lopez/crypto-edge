@@ -166,6 +166,12 @@ Interpretation note on multiple testing:
 - The pre-registration fixed the Holm family at the **11 base-cost out-of-sample strategy trials**. SPEC §7.3 says "the total number of trials in the ledger" (the ledger holds 430 rows, including train-window, stress, delay, benchmark and diagnostic runs).
 - The choice does not matter. **The smallest raw p-value of any trial is 0.263, so nothing passes even with no correction at all.**
 
+Post-report test hardening (packaging, 2026-09-24):
+- Mutation testing showed the engine look-ahead unit test did not catch a one-bar leak.
+- **Cause:** it rebalanced weekly and the cut day was not a decision day.
+- **Fix:** the test now rebalances daily with continuous weights. It fails on an injected one-bar leak and passes on the unmodified engine.
+- **Engine code is unchanged,** so all Phase 2 results stand. The reviewer's independent end-to-end perturbation check had already found no leak.
+
 ## 4. Results (run 2, `9446793`; out-of-sample 2021-07-01 → 2026-06-30, 20 folds, 1,826 days) [MEASURED]
 
 Reproduce: `uv run python -m edge.fetch && uv run python -m edge.run_phase2`, then `uv run python research/02_phase2_diagnostics.py`.

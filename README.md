@@ -39,7 +39,7 @@ A skeptical test of whether a retail-accessible, long-only spot crypto strategy 
 ## Reproduce
 ```bash
 uv sync
-uv run pytest                               # 51 tests
+make ci                                     # look-ahead gate, then all 51 tests (same as GitHub Actions)
 uv run python -m edge.fetch                 # Coinbase daily candles -> ~/.cache/crypto-edge (~15 min first time)
 uv run python -m edge.run_phase2            # every pre-registered trial, ~1 min
 uv run python research/02_phase2_diagnostics.py
@@ -48,6 +48,22 @@ uv run python research/02_phase2_diagnostics.py
 - `research/results/phase2/manifest.json` records the sha256 of every candle file used. A fresh fetch can differ if Coinbase revises candles; compare the hashes.
 - Each run appends to `research/trials.csv`.
 
+## Architecture
+```mermaid
+flowchart LR
+  F[fetch.py<br/>Coinbase public candles<br/>listed + delisted] --> D[data.py<br/>Panel, drops incomplete bars]
+  D --> U[universe.py<br/>PIT eligibility mask]
+  D --> E[engine.py<br/>daily event loop]
+  U --> E
+  H[hypotheses.py<br/>H1-H3 rules] -->|target weights<br/>from panel.upto d| E
+  B[benchmarks.py] --> E
+  E -->|returns, trades, events| V[evaluation.py + metrics.py<br/>folds, Sharpe, bootstrap, Holm, DSR]
+  V --> R[run_phase2.py<br/>verdicts, ledger, outputs]
+```
+- **Causality boundary:** strategies only ever receive `panel.upto(d)`. Orders decided at the close of bar d fill at the open of bar d+1 (+ delay). The full panel is used only for accounting (marking, delisting write-offs).
+- **Limits live in the engine** (`apply_limits` and execution-time checks). No strategy output can exceed 5 positions, 20% per asset, or 90% gross, or bypass the daily-loss or drawdown halts.
+- **CI:** `.github/workflows/ci.yml` runs `make ci`: the look-ahead gate first, then the full suite. Both look-ahead tests were mutation-checked: injecting a one-bar leak into the engine view or the universe ADV makes the gate fail.
+
 ## Limitations
 - One venue, one market era (2021–26), and 20 folds, so statistical power is low.
 - Only price/volume rules could be tested honestly. Fundamental, unlock and valuation ideas need point-in-time data that is not available for free (EDGE_REPORT §1.4).
@@ -55,6 +71,7 @@ uv run python research/02_phase2_diagnostics.py
 - Taxes are not modeled. They would only widen the gap against BTC buy-and-hold.
 
 ## Layout
+- `Makefile`, `.github/workflows/ci.yml`: CI.
 - `SPEC.md`: approved specification.
 - `EDGE_REPORT.md`: research, pre-registration, results, verdicts.
 - `PROGRESS.md`: status and next steps.
