@@ -42,7 +42,7 @@ class Limits:
 
 
 class Strategy(Protocol):
-    def target_weights(self, view: Panel, d: pd.Timestamp) -> pd.Series: ...
+    def target_weights(self, view: Panel, d: pd.Timestamp, held: frozenset[str]) -> pd.Series: ...
     def exits(self, view: Panel, d: pd.Timestamp, held: frozenset[str]) -> set[str]: ...
 
 
@@ -183,7 +183,7 @@ def run(panel: Panel, strategy: Strategy, start: pd.Timestamp, end: pd.Timestamp
         held = frozenset(pos)
         exits = set(strategy.exits(view, s, held)) & held
         if rebalance(s):
-            raw = strategy.target_weights(view, s)
+            raw = strategy.target_weights(view, s, held)
             if universe is not None:
                 in_uni = universe.loc[s].reindex(raw.index, fill_value=False)
                 raw = raw[in_uni | raw.index.isin(held)]

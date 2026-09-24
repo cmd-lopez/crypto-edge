@@ -16,10 +16,11 @@ class Fixed:
     """Targets fixed weights on rebalance days; optional per-day exits."""
 
     def __init__(self, weights, exits=None):
-        self.weights, self._exits, self.seen = weights, exits or {}, []
+        self.weights, self._exits, self.seen, self.helds = weights, exits or {}, [], {}
 
-    def target_weights(self, view, d):
+    def target_weights(self, view, d, held):
         self.seen.append(view.close.index.max())
+        self.helds[d] = held
         return pd.Series(self.weights, dtype=float)
 
     def exits(self, view, d, held):
@@ -29,6 +30,16 @@ class Fixed:
 def on(*days):
     s = {ts(i) for i in days}
     return lambda d: d in s
+
+
+def test_strategy_receives_actual_holdings_not_its_own_targets():
+    a = frame("2024-01-01", [10, 10, 10])  # delisted after day 2
+    b = frame("2024-01-01", [10] * 5)
+    s = Fixed({"A-USD": 0.4, "B-USD": 0.4})
+    run(panel({"A-USD": a, "B-USD": b}), s, ts(0), ts(4), lambda d: True, CostModel(0, 0), NO_LIMITS)
+    assert s.helds[ts(0)] == frozenset()
+    assert s.helds[ts(1)] == {"A-USD", "B-USD"}
+    assert s.helds[ts(3)] == {"B-USD"}  # A was written off on day 3
 
 
 def test_costs_and_fill_at_next_open_not_same_close():
@@ -92,7 +103,7 @@ class _Seq:
     def __init__(self, by_day):
         self.by_day = {ts(k): v for k, v in by_day.items()}
 
-    def target_weights(self, view, d):
+    def target_weights(self, view, d, held):
         return pd.Series(self.by_day.get(d, {}), dtype=float)
 
     def exits(self, view, d, held):
@@ -157,7 +168,7 @@ def test_strategy_only_sees_bars_up_to_decision_date():
 
 
 class Momentum:
-    def target_weights(self, view, d):
+    def target_weights(self, view, d, held):
         ret = view.close.iloc[-1] / view.close.iloc[-8] - 1 if len(view.close) >= 8 else view.close.iloc[-1] * 0
         return (ret.nlargest(2) > -1).astype(float) * 0.4
 

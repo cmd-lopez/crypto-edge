@@ -25,6 +25,6 @@ def test_equal_weight_over_point_in_time_universe_monthly():
     idx = pd.date_range("2024-01-30", periods=4, freq="D", tz="UTC")  # Jan 30,31, Feb 1,2
     uni = pd.DataFrame({"A-USD": [True] * 4, "B-USD": [True] * 4, "C-USD": [False] * 4}, index=idx)
     s = EqualWeightMonthly(uni)
-    w = s.target_weights(None, idx[1])
+    w = s.target_weights(None, idx[1], frozenset())
     assert w.to_dict() == {"A-USD": 0.5, "B-USD": 0.5}
     assert [month_end(d) for d in idx] == [False, True, False, False]

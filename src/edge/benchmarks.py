@@ -14,7 +14,7 @@ def month_end(d: pd.Timestamp) -> bool:
 
 
 class BuyHoldBTC:
-    def target_weights(self, view: Panel | None, d: pd.Timestamp) -> pd.Series:
+    def target_weights(self, view: Panel | None, d: pd.Timestamp, held: frozenset[str]) -> pd.Series:
         return pd.Series({"BTC-USD": 1.0})
 
     def exits(self, view, d, held) -> set[str]:
@@ -31,7 +31,7 @@ class EqualWeightMonthly:
     def __init__(self, universe: pd.DataFrame):
         self.universe = universe
 
-    def target_weights(self, view: Panel | None, d: pd.Timestamp) -> pd.Series:
+    def target_weights(self, view: Panel | None, d: pd.Timestamp, held: frozenset[str]) -> pd.Series:
         row = self.universe.loc[d]
         names = row[row].index
         return pd.Series(1.0 / len(names), index=names) if len(names) else pd.Series(dtype=float)
