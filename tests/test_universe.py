@@ -54,10 +54,10 @@ def test_top_n_by_adv():
     assert e.loc[ts(N - 1), ["A4-USD", "A3-USD"]].all()
 
 
-def test_delisted_asset_drops_out_after_volume_stops():
+def test_asset_without_a_bar_on_d_is_not_in_universe():
     fr = base_frames()
     fr["DEAD-USD"] = frame("2024-01-01", np.ones(40), volume=10e6)  # last bar day 39
     e = eligibility(panel(fr))
     assert e.loc[ts(39), "DEAD-USD"]
-    # ADV over trailing 30 days falls below $5M once >15 zero days: day 55
-    assert not e.loc[ts(55), "DEAD-USD"]
+    # trailing ADV is still >= $5M on day 40, but there is no bar: not tradeable
+    assert not e.loc[ts(40):, "DEAD-USD"].any()

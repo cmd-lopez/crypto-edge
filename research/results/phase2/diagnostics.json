@@ -1,0 +1,43 @@
+{
+ "note": "post-hoc diagnostics; not pre-registered; not in Holm family",
+ "crosscheck": {
+  "btc_engine": 0.7464131851906319,
+  "btc_vectorized": 0.7464131851906228,
+  "ew_engine": -0.8556763861362059,
+  "ew_vectorized": -0.8558765008503701
+ },
+ "ew_universe_size": {
+  "min": 7,
+  "median": 32.0,
+  "max": 50
+ },
+ "gross_primary": {
+  "H1": {
+   "sharpe_gross": 0.297032116451638,
+   "mdd_gross": 0.4131375495477797,
+   "fold_win_rate_gross_vs_gross_benchmarks": 0.3,
+   "total_return_gross": 0.24659519359435644
+  },
+  "H2": {
+   "sharpe_gross": 0.16660559234525532,
+   "mdd_gross": 0.5421178722906087,
+   "fold_win_rate_gross_vs_gross_benchmarks": 0.4,
+   "total_return_gross": -0.12521162218010617
+  },
+  "H3": {
+   "sharpe_gross": -0.26254676761171347,
+   "mdd_gross": 0.6606498060689321,
+   "fold_win_rate_gross_vs_gross_benchmarks": 0.2,
+   "total_return_gross": -0.5885514044775906
+  }
+ },
+ "gross_benchmarks": {
+  "BTC_buy_hold": {
+   "sharpe": 0.47537471934089737
+  },
+  "EW_monthly": {
+   "sharpe": -0.10750455268958801,
+   "mdd": 0.934417456261968
+  }
+ }
+}

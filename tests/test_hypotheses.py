@@ -88,6 +88,16 @@ def test_h3_score_selection_buffer_and_fill():
     assert set(kept.index) == {"S12-USD", "S19-USD", "S18-USD", "S17-USD", "S16-USD"}
 
 
+def test_h3_fill_excludes_every_held_name_as_preregistered():
+    # 6 scored names; held S01, S02 are bottom half -> dropped, and must not be refilled
+    fr = {f"S{i:02d}-USD": frame("2024-01-01", 100 * np.exp(np.cumsum(np.full(N, 0.001 * (i - 3)))))
+          for i in range(6)}
+    p = panel(fr)
+    s = H3TrendComposite(cadence="weekly", universe=uni_all(p))
+    w = s.target_weights(p, last(p), frozenset({"S01-USD", "S02-USD"}))
+    assert set(w.index) == {"S05-USD", "S04-USD", "S03-USD", "S00-USD"}
+
+
 def test_h3_requires_100_closes():
     t = np.arange(N, dtype=float)
     fr = {"OLD-USD": frame("2024-01-01", 100 + t),

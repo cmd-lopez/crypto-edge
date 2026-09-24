@@ -109,5 +109,5 @@ class H3TrendComposite(_Base):
         order = _top_by(score, len(score))
         top_half = set(order[: math.ceil(len(order) / 2)])
         kept = [n for n in order if n in held and n in top_half][:MAX_NAMES]
-        fill = [n for n in order if n not in kept][: MAX_NAMES - len(kept)]
+        fill = [n for n in order if n not in held][: MAX_NAMES - len(kept)]  # §2: "not held"
         return _equal(kept + fill)

@@ -86,6 +86,47 @@ class _Order:
     no_increase: frozenset[str] = frozenset()
 
 
+def _order_deltas(order: _Order, pos: dict, o_row: pd.Series, eq: float, blocked: bool,
+                  band: float, limits: Limits) -> tuple[dict[str, float], list[str]]:
+    """Target minus current value per asset; assets without a bar today are skipped and,
+    if they needed selling, returned in `unsold` for a retry on the next bar."""
+    deltas, unsold = {}, []
+    for a in order.assets:
+        cur = pos.get(a, 0.0)
+        tgt = float(order.weights.get(a, 0.0)) * eq
+        if blocked or a in order.no_increase:
+            tgt = min(tgt, cur)
+        if not np.isfinite(o_row.get(a, np.nan)):
+            if tgt < cur - 1e-12:
+                unsold.append(a)
+            continue
+        within_band = tgt > 0 and cur > 0 and abs(tgt - cur) <= band * tgt
+        if within_band and cur <= limits.max_weight * eq:
+            continue
+        if abs(tgt - cur) > 1e-12:
+            deltas[a] = tgt - cur
+    return deltas, unsold
+
+
+def _projected_gross(pos: dict, deltas: dict) -> float:
+    return sum(pos.values()) + sum(deltas.values())
+
+
+def _cap_new_entries(deltas: dict, pos: dict, limits: Limits) -> dict:
+    """Drop the smallest new entries if positions that could not be sold would otherwise
+    push the book above max_positions."""
+    if limits.max_positions is None:
+        return deltas
+    after = {a for a in set(pos) | set(deltas) if pos.get(a, 0.0) + deltas.get(a, 0.0) > 1e-12}
+    excess = len(after) - limits.max_positions
+    if excess <= 0:
+        return deltas
+    new = sorted((a for a, d in deltas.items() if d > 0 and pos.get(a, 0.0) == 0.0),
+                 key=lambda a: (-deltas[a], a))
+    drop = set(new[len(new) - excess:]) if excess <= len(new) else set(new)
+    return {a: d for a, d in deltas.items() if a not in drop}
+
+
 def run(panel: Panel, strategy: Strategy, start: pd.Timestamp, end: pd.Timestamp,
         rebalance: Callable[[pd.Timestamp], bool], costs: CostModel, limits: Limits,
         delay: int = 0, dd_reset_dates: Iterable[pd.Timestamp] = (),
@@ -127,26 +168,19 @@ def run(panel: Panel, strategy: Strategy, start: pd.Timestamp, end: pd.Timestamp
         if order is not None:
             eq = cash + sum(pos.values())
             blocked = block_entries_on == s or dd_halted
-            deltas = {}
-            for a in order.assets:
-                if not np.isfinite(o_row.get(a, np.nan)):
-                    continue  # no bar: cannot trade
-                cur = pos.get(a, 0.0)
-                tgt = float(order.weights.get(a, 0.0)) * eq
-                if blocked or a in order.no_increase:
-                    tgt = min(tgt, cur)
-                if tgt > 0 and cur > 0 and abs(tgt - cur) <= band * tgt:
-                    continue
-                if abs(tgt - cur) > 1e-12:
-                    deltas[a] = tgt - cur
+            deltas, unsold = _order_deltas(order, pos, o_row, eq, blocked, band, limits)
+            if _projected_gross(pos, deltas) > limits.max_gross * eq + 1e-12:
+                deltas, unsold = _order_deltas(order, pos, o_row, eq, blocked, 0.0, limits)
+            deltas = _cap_new_entries(deltas, pos, limits)
             for a, d in sorted(deltas.items()):  # sells first
                 if d < 0:
                     pos[a] += d
                     cash += -d * (1 - c)
                     trades.append({"date": s, "asset": a, "value": d, "cost": -d * c})
             buys = {a: d for a, d in deltas.items() if d > 0}
-            need = sum(buys.values()) * (1 + c)
-            scale = min(1.0, cash / need) if need > 0 else 1.0
+            headroom = max(0.0, limits.max_gross * eq - sum(pos.values()))
+            need = sum(buys.values())
+            scale = min(1.0, headroom / need, cash / (need * (1 + c))) if need > 0 else 1.0
             for a, d in sorted(buys.items()):
                 d *= scale
                 pos[a] = pos.get(a, 0.0) + d
@@ -155,6 +189,15 @@ def run(panel: Panel, strategy: Strategy, start: pd.Timestamp, end: pd.Timestamp
                 trades.append({"date": s, "asset": a, "value": d, "cost": d * c})
             for a in [a for a, v in pos.items() if v <= 1e-12]:
                 pos.pop(a), px.pop(a)
+            if unsold and i + 1 < len(dates):  # retry sales that had no bar today
+                nxt = dates[i + 1]
+                prev = pending.get(nxt)
+                retry = pd.Series({a: 0.0 for a in unsold})
+                if prev is None:
+                    pending[nxt] = _Order(retry, frozenset(unsold))
+                else:
+                    keep = prev.weights.drop(list(unsold), errors="ignore")
+                    pending[nxt] = _Order(keep, prev.assets | frozenset(unsold), prev.no_increase)
 
         mark(c_row)
         eq = cash + sum(pos.values())

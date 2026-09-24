@@ -95,7 +95,7 @@ class Phase2:
             "BTC_buy_hold": run(self.panel, btc, start, end, btc.rebalance_at(start), costs,
                                 NO_LIMITS, delay=delay),
             "EW_monthly": run(self.panel, ew, start, end, ew.rebalance_from(start), costs,
-                              NO_LIMITS, delay=delay, universe=self.universe),
+                              NO_LIMITS, delay=delay, universe=self.universe, band=BAND),
         }
 
     def log(self, hypothesis: str, params, case: str, r: Result, start, end, win=np.nan,

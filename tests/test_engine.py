@@ -32,6 +32,28 @@ def on(*days):
     return lambda d: d in s
 
 
+def test_band_never_keeps_a_position_above_the_weight_cap():
+    a = frame("2024-01-01", [10, 10, 12.5, 12.5, 12.5])  # +25% on day 2 -> weight ~0.215
+    b = frame("2024-01-01", [10] * 5)
+    seq = _Seq({0: {"A-USD": 0.18, "B-USD": 0.18}, 2: {"A-USD": 0.18, "B-USD": 0.18}})
+    r = run(panel({"A-USD": a, "B-USD": b}), seq, ts(0), ts(4), on(0, 2), CostModel(0, 0),
+            Limits(daily_loss=None, max_drawdown=None), band=0.20)
+    assert r.weights.loc[ts(2), "A-USD"] > 0.20
+    assert r.weights.loc[ts(3), "A-USD"] == pytest.approx(0.18)
+
+
+def test_unsellable_holding_does_not_break_position_or_gross_limits_and_is_retried():
+    held = {f"A{i}-USD": frame("2024-01-01", [10] * 5) for i in range(5)}
+    held["A0-USD"] = frame("2024-01-01", [10] * 5).drop(index=2)  # no bar on day 2
+    new = {f"B{i}-USD": frame("2024-01-01", [10] * 5) for i in range(5)}
+    seq = _Seq({0: {k: 0.18 for k in held}, 1: {k: 0.18 for k in new}})
+    lim = Limits(daily_loss=None, max_drawdown=None)
+    r = run(panel({**held, **new}), seq, ts(0), ts(4), on(0, 1), CostModel(0, 0), lim)
+    w2 = r.weights.loc[ts(2)]
+    assert (w2 > 0).sum() <= 5 and w2.sum() <= 0.90 + 1e-9
+    assert r.weights.loc[ts(3), "A0-USD"] == 0  # sale retried on the next bar
+
+
 def test_strategy_receives_actual_holdings_not_its_own_targets():
     a = frame("2024-01-01", [10, 10, 10])  # delisted after day 2
     b = frame("2024-01-01", [10] * 5)

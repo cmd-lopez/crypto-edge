@@ -31,6 +31,7 @@ def eligibility(panel: Panel, min_adv: float = 5e6, window: int = 30,
     history = panel.close.notna().cumsum()
     allowed = pd.Series([base_of(c) not in EXCLUDED for c in panel.close.columns],
                         index=panel.close.columns)
-    passing = (adv >= min_adv) & (history >= min_history) & allowed
+    tradeable = panel.close.notna()  # a bar on d: listed and trading at d
+    passing = (adv >= min_adv) & (history >= min_history) & allowed & tradeable
     ranked = adv.where(passing).rank(axis=1, ascending=False, method="first")
     return passing & (ranked <= top_n)
