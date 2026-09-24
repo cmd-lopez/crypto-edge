@@ -1,8 +1,19 @@
 # crypto-edge
 
-A skeptical test of whether a retail-accessible, long-only spot crypto strategy has an edge on a 1–4 week horizon, net of realistic costs. The rule is edge before infrastructure: the trading system only gets built if the edge test passes.
+**Question:** can a retail, long-only, spot-only crypto strategy beat buy-and-hold BTC and an equal-weight altcoin basket on a 1–4 week horizon after realistic Coinbase costs?
 
-**Result:** the three pre-registered hypotheses show **no edge** (EDGE_REPORT.md). Per SPEC kill criterion 1, the trading system was not built.
+**Method:**
+- **Honest data.** A point-in-time, survivorship-safe universe of Coinbase USD pairs, *including 77 delisted coins*, filtered by 30-day volume ≥ $5M. It is built from the free public API.
+- **Rules fixed in advance.** Three trend-following rules were committed (`c24ad22`) before any backtest ran. They were tested walk-forward (12-month train, 3-month test, 20 folds) at 0.8% per side, with a stress case at 2× cost.
+- **A strict, pre-set bar.** A rule has to beat both benchmarks in ≥ 60% of folds, have drawdown ≤ BTC's, survive doubled costs, and pass a Holm-corrected bootstrap test at p < 0.05 across all 11 trials.
+
+**Verdict: no edge found, best raw p = 0.26.** Per the spec's kill criterion, the trading system was not built.
+
+![Out-of-sample equity: best rule vs BTC buy-and-hold vs equal-weight basket](docs/equity_curve.png)
+
+*The blue line is the best of 11 trials, picked after the fact. It still beats both benchmarks in only 35% of folds and drops to Sharpe 0.29 at 2× costs. Regenerate with `uv run --group charts python research/03_equity_chart.py` (reads committed results only).*
+
+Licensed under the [MIT License](LICENSE).
 
 ## Problem
 - **Venue and account:** Coinbase Advanced, spot only, long-only, Maryland (US) account.
@@ -72,6 +83,8 @@ flowchart LR
 
 ## Layout
 - `Makefile`, `.github/workflows/ci.yml`: CI.
+- `LICENSE`: MIT.
+- `docs/equity_curve.png`: README chart, from `research/03_equity_chart.py`.
 - `SPEC.md`: approved specification.
 - `EDGE_REPORT.md`: research, pre-registration, results, verdicts.
 - `PROGRESS.md`: status and next steps.

@@ -11,6 +11,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+charts = [
+    "matplotlib>=3.8",
+]
 dev = ["pytest>=8"]
 
 [build-system]
