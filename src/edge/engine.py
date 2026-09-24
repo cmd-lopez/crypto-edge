@@ -89,7 +89,9 @@ class _Order:
 def run(panel: Panel, strategy: Strategy, start: pd.Timestamp, end: pd.Timestamp,
         rebalance: Callable[[pd.Timestamp], bool], costs: CostModel, limits: Limits,
         delay: int = 0, dd_reset_dates: Iterable[pd.Timestamp] = (),
-        universe: pd.DataFrame | None = None) -> Result:
+        universe: pd.DataFrame | None = None, band: float = 0.0) -> Result:
+    """band: skip resizing a held position whose target is non-zero when
+    |target - current| <= band * target (entries and exits always trade)."""
     dates = panel.dates[(panel.dates >= start) & (panel.dates <= end)]
     opens, closes = panel.open, panel.close
     last_bar = closes.apply(lambda s: s.last_valid_index())
@@ -133,6 +135,8 @@ def run(panel: Panel, strategy: Strategy, start: pd.Timestamp, end: pd.Timestamp
                 tgt = float(order.weights.get(a, 0.0)) * eq
                 if blocked or a in order.no_increase:
                     tgt = min(tgt, cur)
+                if tgt > 0 and cur > 0 and abs(tgt - cur) <= band * tgt:
+                    continue
                 if abs(tgt - cur) > 1e-12:
                     deltas[a] = tgt - cur
             for a, d in sorted(deltas.items()):  # sells first

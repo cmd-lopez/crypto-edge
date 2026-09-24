@@ -135,6 +135,18 @@ def test_untradeable_and_out_of_universe_targets_are_skipped():
     assert set(r.trades["asset"]) == {"B-USD"}
 
 
+def test_no_trade_band_skips_small_rebalances_but_not_entries_or_exits():
+    a = frame("2024-01-01", [10, 10, 11, 11, 11, 11])  # A drifts up 10% on day 2
+    b = frame("2024-01-01", [10] * 6)
+    seq = _Seq({0: {"A-USD": 0.4, "B-USD": 0.4}, 2: {"A-USD": 0.4, "B-USD": 0.4}, 3: {"B-USD": 0.4}})
+    r = run(panel({"A-USD": a, "B-USD": b}), seq, ts(0), ts(5), on(0, 2, 3), CostModel(0, 0),
+            NO_LIMITS, band=0.20)
+    days = r.trades.groupby("date")["asset"].apply(set).to_dict()
+    assert days[ts(1)] == {"A-USD", "B-USD"}  # entries always trade
+    assert ts(3) not in days                  # drift within 20% of target: no trade
+    assert days[ts(4)] == {"A-USD"}           # exit always trades
+
+
 def test_strategy_only_sees_bars_up_to_decision_date():
     p = panel({"A-USD": frame("2024-01-01", np.arange(1, 11, dtype=float))})
     s = Fixed({"A-USD": 0.5})
