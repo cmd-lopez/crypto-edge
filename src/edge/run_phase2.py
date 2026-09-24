@@ -2,7 +2,7 @@
 
     uv run python -m edge.run_phase2
 
-Protocol: EDGE_REPORT.md §2.0 (pre-registration commit c24ad22). Outputs go to
+Protocol: EDGE_REPORT.md §2.0 (pre-registration commit 7c879de). Outputs go to
 research/results/phase2/ and every run is appended to research/trials.csv.
 """
 
@@ -29,7 +29,7 @@ from edge.ledger import append_trial
 from edge.metrics import deflated_sharpe, holm, max_drawdown, sharpe, stationary_bootstrap_pvalue
 from edge.universe import eligibility
 
-PREREG_COMMIT = "c24ad22"
+PREREG_COMMIT = "7c879de"
 AS_OF = pd.Timestamp("2026-09-23", tz="UTC")
 DATA_START, DATA_END = pd.Timestamp("2020-07-01", tz="UTC"), pd.Timestamp("2026-09-22", tz="UTC")
 HOLDOUT = (pd.Timestamp("2026-07-01", tz="UTC"), DATA_END)

@@ -1,4 +1,4 @@
-"""Pre-registered hypotheses H1-H3 (EDGE_REPORT.md §2, commit c24ad22).
+"""Pre-registered hypotheses H1-H3 (EDGE_REPORT.md §2, commit 7c879de).
 
 Each strategy returns at most 5 names at WEIGHT each; the engine applies SPEC limits.
 Strategies only receive `view = panel.upto(d)` and read universe row d (causal).

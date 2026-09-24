@@ -4,7 +4,7 @@
 
 **Method:**
 - **Honest data.** A point-in-time, survivorship-safe universe of Coinbase USD pairs, *including 77 delisted coins*, filtered by 30-day volume ≥ $5M. It is built from the free public API.
-- **Rules fixed in advance.** Three trend-following rules were committed (`c24ad22`) before any backtest ran. They were tested walk-forward (12-month train, 3-month test, 20 folds) at 0.8% per side, with a stress case at 2× cost.
+- **Rules fixed in advance.** Three trend-following rules were committed (`7c879de`) before any backtest ran. They were tested walk-forward (12-month train, 3-month test, 20 folds) at 0.8% per side, with a stress case at 2× cost.
 - **A strict, pre-set bar.** A rule has to beat both benchmarks in ≥ 60% of folds, have drawdown ≤ BTC's, survive doubled costs, and pass a Holm-corrected bootstrap test at p < 0.05 across all 11 trials.
 
 **Verdict: no edge found, best raw p = 0.26.** Per the spec's kill criterion, the trading system was not built.
@@ -25,7 +25,7 @@ Licensed under the [MIT License](LICENSE).
 ## Approach
 1. **Point-in-time, survivorship-safe universe.** Coinbase USD pairs, *including 77 delisted products*, filtered by 30-day ADV ≥ $5M and requiring a bar on the decision date. It is built from the free public API (`src/edge/fetch.py`, `src/edge/universe.py`).
 2. **Parallel research.** Four tracks: regime, two candidate-asset screens, and a literature review (`research/notes/`). All sources are dated; estimates are labeled.
-3. **Pre-registration.** Hypotheses, parameter grids, edge bar and multiple-testing family were committed (`c24ad22`) before any strategy touched real prices.
+3. **Pre-registration.** Hypotheses, parameter grids, edge bar and multiple-testing family were committed (`7c879de`) before any strategy touched real prices.
 4. **Test-driven harness** (`src/edge/`, 51 tests):
    - Event-driven engine: next-open fills, costs on both sides, delisting write-offs, no-trade band. SPEC limits are enforced on every order whatever the strategy asks for.
    - Walk-forward folds: 12-month train, 3-month test, 20 folds.

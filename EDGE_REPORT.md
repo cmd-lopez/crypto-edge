@@ -1,8 +1,8 @@
 # EDGE_REPORT — Phase 2
 
 Status: **COMPLETE. Verdict: NO EDGE for H1, H2 and H3.**
-- §1–2 (pre-registration) were committed at `c24ad22` before any hypothesis touched real prices.
-- §3–6 were added after the runs. The canonical run is git `9446793`.
+- §1–2 (pre-registration) were committed at `7c879de` before any hypothesis touched real prices.
+- §3–6 were added after the runs. The canonical run is git `fb8695e`.
 
 Tags: **[MEASURED]** reproduced by repository code · **[SOURCE]** cited in a research note · **[ESTIMATE]** · **[SPECULATION]** · **[INFERENCE]**.
 
@@ -145,12 +145,14 @@ Cross-cutting observation [INFERENCE]: most of today's "valuation disconnects" a
 
 | Commit | Event |
 |---|---|
-| `c24ad22` | Pre-registration (§1–2). |
-| `d216e6e` | Implemented H1–H3 exactly per §2, plus the runner. **Run 1**: 215 ledger rows with `git_hash=d216e6e`. Verdicts: no edge ×3. |
+| `7c879de` | Pre-registration (§1–2). |
+| `2d264ed` | Implemented H1–H3 exactly per §2, plus the runner. **Run 1**: 215 ledger rows recorded with `git_hash=d216e6e` (pre-rewrite hash). Verdicts: no edge ×3. |
 | — | Independent code review (read-only reviewer agent). No critical findings. Look-ahead was independently confirmed absent: perturbing future prices and volumes left all earlier decisions identical, including through the walk-forward switching. It found five confirmed minor issues, listed below. |
-| `9446793` | All five fixed, each with a failing-first test. **Run 2 is canonical**: 215 ledger rows with `git_hash=9446793`. Verdicts: no edge ×3, unchanged. |
+| `fb8695e` | All five fixed, each with a failing-first test. **Run 2 is canonical**: 215 ledger rows recorded with `git_hash=9446793` (pre-rewrite hash). Verdicts: no edge ×3, unchanged. |
 
-Fixes in `9446793`:
+All hashes in this report are post-rewrite (see `docs/history-rewrite.md`). Recorded outputs (`research/trials.csv`, `verdicts.json`, `manifest.json`) carry the original pre-rewrite hashes, and that file maps them.
+
+Fixes in `fb8695e`:
 1. **Universe:** a product with no bar on d is excluded from U_d. Before, a delisted name stayed eligible for up to about 29 days on its trailing ADV. SPEC §4.1 requires a tradeable product.
 2. **No-trade band:** it can no longer hold a position above the 20% cap. Before, the band could leave a position at 0.216.
 3. **Unsellable holdings:** if a held name has no bar on execution day, new entries are trimmed so that ≤ 5 positions and ≤ 90% gross still hold, and the sale is retried on the next bar.
@@ -172,7 +174,7 @@ Post-report test hardening (packaging, 2026-09-24):
 - **Fix:** the test now rebalances daily with continuous weights. It fails on an injected one-bar leak and passes on the unmodified engine.
 - **Engine code is unchanged,** so all Phase 2 results stand. The reviewer's independent end-to-end perturbation check had already found no leak.
 
-## 4. Results (run 2, `9446793`; out-of-sample 2021-07-01 → 2026-06-30, 20 folds, 1,826 days) [MEASURED]
+## 4. Results (run 2, `fb8695e`; out-of-sample 2021-07-01 → 2026-06-30, 20 folds, 1,826 days) [MEASURED]
 
 Reproduce: `uv run python -m edge.fetch && uv run python -m edge.run_phase2`, then `uv run python research/02_phase2_diagnostics.py`.
 Outputs are in `research/results/phase2/`:

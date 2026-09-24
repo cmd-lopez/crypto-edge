@@ -17,9 +17,9 @@ The superpowers skills are not installed in this environment. Their intent was f
 - code review (reviewer agent; 5 findings, all fixed)
 
 ## Decisions (Phase 2)
-- **Pre-registration:** committed at `c24ad22`. H1 BTC trend gate, H2 per-asset trend, H3 trend composite. The Holm family is the 11 base-cost out-of-sample trials.
+- **Pre-registration:** committed at `7c879de`. H1 BTC trend gate, H2 per-asset trend, H3 trend composite. The Holm family is the 11 base-cost out-of-sample trials.
 - **Why only price/volume rules:** fundamental/valuation/unlock hypotheses were rejected as not honestly backtestable with free point-in-time data (EDGE_REPORT §1.4).
-- **Canonical run:** `9446793`, after the review fixes. Run 1 (`d216e6e`) is kept in the ledger.
+- **Canonical run:** `fb8695e`, after the review fixes. Run 1 (`2d264ed`) is kept in the ledger.
 - **Packaging:**
   - CI added: `make ci` and `.github/workflows/ci.yml` run the look-ahead gate first, then the full suite.
   - The engine look-ahead test was strengthened after mutation testing showed it missed a one-bar leak.

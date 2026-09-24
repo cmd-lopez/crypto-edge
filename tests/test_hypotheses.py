@@ -1,4 +1,4 @@
-"""Rules must match EDGE_REPORT.md §2 exactly (pre-registration commit c24ad22)."""
+"""Rules must match EDGE_REPORT.md §2 exactly (pre-registration commit 7c879de)."""
 
 import numpy as np
 import pandas as pd
