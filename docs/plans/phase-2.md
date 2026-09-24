@@ -27,7 +27,8 @@ Scope: SPEC.md §4, §6.1–6.2 (as backtest mechanics), §7. This is research c
 | `src/edge/metrics.py` | `sharpe`, `max_drawdown`, `stationary_bootstrap_pvalue(a, b, mean_block=7, n_boot=10_000, seed)` (H0: SR(a) ≤ SR(b)), `holm(p)`, `deflated_sharpe(...)` |
 | `src/edge/benchmarks.py` | `BuyHoldBTC`, `EqualWeightMonthly`. Both run through the same engine and cost model; SPEC position limits do not apply to them |
 | `src/edge/ledger.py` | `append_trial(path, record)`. Append-only CSV with a fixed header |
-| `src/edge/hypotheses/*.py` | One module per pre-registered hypothesis (written after step 3) |
+| `src/edge/hypotheses.py` | H1TrendGate, H2AssetTrend, H3TrendComposite, cadences (written after step 3). `target_weights(view, d, held)` receives the actual holdings |
+| `src/edge/evaluation.py` | `fold_sharpes`, `fold_win_rate`, `select_cells`, `Switching` (per-fold strategy routing), `verdict` |
 | `src/edge/run_phase2.py` | Orchestration: folds → trials → edge-bar table → outputs |
 
 ## Tests (all written before implementation)

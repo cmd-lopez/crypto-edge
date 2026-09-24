@@ -1,6 +1,8 @@
 # EDGE_REPORT — Phase 2
 
-Status: **PRE-REGISTRATION.** Sections 1–2 are written and committed before any hypothesis is backtested on real prices. Results (§3–5) are appended after the run and cite the pre-registration commit hash.
+Status: **COMPLETE. Verdict: NO EDGE for H1, H2 and H3.**
+- §1–2 (pre-registration) were committed at `c24ad22` before any hypothesis touched real prices.
+- §3–6 were added after the runs. The canonical run is git `9446793`.
 
 Tags: **[MEASURED]** reproduced by repository code · **[SOURCE]** cited in a research note · **[ESTIMATE]** · **[SPECULATION]** · **[INFERENCE]**.
 
@@ -136,3 +138,142 @@ Cross-cutting observation [INFERENCE]: most of today's "valuation disconnects" a
 - **Loser-avoidance (literature H4):** it needs an equal-weight book of the whole universe, which breaks the 5-position limit.
 - **Plain cross-sectional momentum (literature H5):** low prior. It would spend multiple-testing budget.
 - **Volume-spike breakout (from `03_candidates_l1_payments.md`):** no published prior. It is kept as a candidate for a future, separately pre-registered study.
+
+---
+
+## 3. What happened after pre-registration (change control)
+
+| Commit | Event |
+|---|---|
+| `c24ad22` | Pre-registration (§1–2). |
+| `d216e6e` | Implemented H1–H3 exactly per §2, plus the runner. **Run 1**: 215 ledger rows with `git_hash=d216e6e`. Verdicts: no edge ×3. |
+| — | Independent code review (read-only reviewer agent). No critical findings. Look-ahead was independently confirmed absent: perturbing future prices and volumes left all earlier decisions identical, including through the walk-forward switching. It found five confirmed minor issues, listed below. |
+| `9446793` | All five fixed, each with a failing-first test. **Run 2 is canonical**: 215 ledger rows with `git_hash=9446793`. Verdicts: no edge ×3, unchanged. |
+
+Fixes in `9446793`:
+1. **Universe:** a product with no bar on d is excluded from U_d. Before, a delisted name stayed eligible for up to about 29 days on its trailing ADV. SPEC §4.1 requires a tradeable product.
+2. **No-trade band:** it can no longer hold a position above the 20% cap. Before, the band could leave a position at 0.216.
+3. **Unsellable holdings:** if a held name has no bar on execution day, new entries are trimmed so that ≤ 5 positions and ≤ 90% gross still hold, and the sale is retried on the next bar.
+4. **H3 fill:** step 2 now excludes *every* held name, per the §2 text "not held". Before, bottom-half held names could be re-selected when ≤ 8 names were scored. This was a deviation from the pre-registration and is corrected to match it.
+5. **Equal-weight benchmark:** it now uses the same 20% no-trade band as the strategies. Without it the benchmark paid more cost, which favored the strategies.
+
+Sensitivity disclosed:
+- **H1 is fragile.** The fixes moved H1's primary out-of-sample Sharpe from **+0.197 (run 1) to −0.147 (run 2)**.
+- **Cause:** 3 of 20 per-fold walk-forward selections flipped (folds 8, 10, 19) because train Sharpes of near-tied cells changed slightly.
+- **Reading:** that a tiny implementation change can swing aggregate Sharpe by 0.34 shows that walk-forward selection among H1's cells is choosing noise [INFERENCE]. This counts *against* a robust edge. Neither run passes the bar.
+
+Interpretation note on multiple testing:
+- The pre-registration fixed the Holm family at the **11 base-cost out-of-sample strategy trials**. SPEC §7.3 says "the total number of trials in the ledger" (the ledger holds 430 rows, including train-window, stress, delay, benchmark and diagnostic runs).
+- The choice does not matter. **The smallest raw p-value of any trial is 0.263, so nothing passes even with no correction at all.**
+
+## 4. Results (run 2, `9446793`; out-of-sample 2021-07-01 → 2026-06-30, 20 folds, 1,826 days) [MEASURED]
+
+Reproduce: `uv run python -m edge.fetch && uv run python -m edge.run_phase2`, then `uv run python research/02_phase2_diagnostics.py`.
+Outputs are in `research/results/phase2/`:
+- `verdicts.json`
+- `trials_summary.csv`
+- `fold_sharpes.csv`
+- `oos_daily_returns.csv`
+- `train_selection_H*.csv`
+- `diagnostics.json`
+- `manifest.json`: sha256 of every cached candle file.
+
+### 4.1 Benchmarks (net of the same costs)
+| | Sharpe | Max drawdown | CAGR | Notes |
+|---|---|---|---|---|
+| BTC buy-and-hold, base | **0.472** | 76.7% | +11.6% | One entry trade. The stronger benchmark in every case |
+| Equal-weight PIT universe, monthly, base | −0.186 | 94.5% | −35.1% | 3 delistings written off. Universe size 7–50 (median 32) |
+
+Engine cross-check (zero cost, independent vectorized reimplementation):
+- BTC: engine and vectorized both give +74.641%; they agree to within 1e-14.
+- Equal-weight: engine −85.766% vs vectorized −85.786%. The 0.02 pp gap comes from positions that could not trade on a rebalance day.
+
+### 4.2 Primary (walk-forward) trials: the edge bar
+| | C1 fold wins, base (need ≥ 60%) | C1, 2× cost | C2 max DD vs BTC 76.7% (base / 2×) | Raw p vs BTC | Holm p | DSR | **Verdict** |
+|---|---|---|---|---|---|---|---|
+| H1 trend gate | 25% ✗ | 20% ✗ | 51.1% ✓ / 57.4% ✓ | 0.880 | 1.0 | 0.040 | **no edge** |
+| H2 per-asset trend | 30% ✗ | 20% ✗ | 72.4% ✓ / 66.9% ✓ | 0.947 | 1.0 | 0.013 | **no edge** |
+| H3 trend composite | 20% ✗ | 20% ✗ | 74.6% ✓ / 88.5% ✗ | 0.968 | 1.0 | 0.006 | **no edge** |
+
+Out-of-sample Sharpe (base / 2× / one-day delay):
+- H1: −0.147 / −0.330 / −0.299
+- H2: −0.339 / −0.298 / −0.281
+- H3: −0.479 / −0.971 / −0.585
+
+### 4.3 All fixed cells (base cost; each is a Holm-family member)
+| Cell | Sharpe | Max DD | Fold wins | Raw p | Turnover/yr | Avg gross exposure | Costs paid (fraction of starting equity) |
+|---|---|---|---|---|---|---|---|
+| H1 L=50 btc | 0.510 | 9.2% | 20% | 0.458 | 0.9× | 9% | 0.08 |
+| H1 L=50 top5 | **0.765** | 46.4% | 35% | **0.263** | 4.9× | 37% | 1.01 |
+| H1 L=100 btc | 0.301 | 12.4% | 25% | 0.679 | 0.5× | 9% | 0.04 |
+| H1 L=100 top5 | 0.187 | 54.7% | 30% | 0.716 | 3.9× | 30% | 0.36 |
+| H2 L=20 | −0.096 | 56.6% | 25% | 0.886 | 8.6× | 28% | 0.41 |
+| H2 L=50 | −0.226 | 66.3% | 20% | 0.915 | 7.3× | 32% | 0.31 |
+| H3 weekly | −0.335 | 69.0% | 25% | 0.933 | 6.8× | 25% | 0.30 |
+| H3 biweekly | −0.153 | 62.5% | 35% | 0.894 | 5.8× | 30% | 0.33 |
+
+The best-looking cell is H1 L=50 top5, with aggregate Sharpe 0.765 vs BTC's 0.472. It still fails:
+- Fold wins are 35%, against the 60% bar.
+- Raw p is 0.263.
+- At 2× cost its Sharpe is 0.287, below BTC's.
+- Picking it after the fact would be exactly the selection bias the protocol exists to prevent.
+
+### 4.4 Diagnostics (post-hoc, not pre-registered, not in the Holm family)
+- **Gross, zero-cost primaries:**
+  - H1 Sharpe −0.034, H2 +0.103, H3 −0.312, against BTC gross 0.475.
+  - Gross fold-win rates vs gross benchmarks: 30%, 40%, 20%.
+  - **The failure is not a cost story. The signals do not beat buy-and-hold BTC even before costs.** Costs make it worse: H2 and H3 turn over 6–9× a year, which costs 25–40% of starting equity across the window.
+- **Split by BTC trend** (BTC above its 200-day SMA at the prior close):
+  - Every trend rule does worse than BTC in BTC-uptrend days. For example, H1 primary Sharpe is 0.30 vs BTC 0.80.
+  - In downtrend days, H2 and H3 still lose, with Sharpe −0.19 and −0.51.
+- **Drawdown breaker:** it fired 13–20 times per alt-basket trial. With the quarterly reset it re-arms each quarter, so drawdown compounds across quarters. This explains aggregate drawdowns of 50–75% despite a 15% breaker.
+- **Untouched holdout, 2026-07-01 → 09-22** (descriptive; parameters chosen on the prior 12 months):
+  - BTC: Sharpe 4.06, +42.6%.
+  - Equal-weight: Sharpe 4.17, +66.7%.
+  - H1 L=100 top5: 2.70 (+22.2%).
+  - H2 L=20: 2.44 (+30.0%).
+  - H3 weekly: 3.36 (+60.1%).
+  - All positive, all below both benchmarks. This is consistent with the out-of-sample verdict: one quarter, no inference.
+
+## 5. Verdicts
+
+| Hypothesis | Verdict | Reasons |
+|---|---|---|
+| **H1** BTC trend gate | **NO EDGE** | Fails C1 (25%, and 20% at 2× cost). Its drawdown pass (51% vs 77%) comes from being out of the market (23% average exposure), not from better risk-adjusted return: Sharpe −0.15 vs BTC 0.47. p = 0.88. Selection is unstable (§3). |
+| **H2** per-asset trend | **NO EDGE** | Fails C1 (30% / 20%). Negative net Sharpe. Gross Sharpe of 0.10 means the signal is absent before costs, too. p = 0.95. |
+| **H3** trend composite | **NO EDGE** | Fails C1 (20% / 20%), and C2 at 2× cost (88.5%). Negative even gross (−0.31). p = 0.97. |
+
+**Phase 2 conclusion:** no pre-registered hypothesis shows an edge. Per SPEC kill criterion 1 and the core principle "edge before infrastructure", **the trading system should not be built.** Phases 3–6 do not proceed unless a new, separately pre-registered study passes the bar.
+
+### 5.1 Recommended next steps (operator decision)
+1. **Stop here and package** (recommended). The deliverable is the research harness plus a negative result. The harness is TDD'd and reviewed, with a PIT survivorship-safe universe, walk-forward, trial ledger and multiple-testing correction. Write README.md for reviewers; archive the branch.
+2. **One new pre-registered study, with a fresh Holm family and an explicit trial budget.** Candidates from the research: volume-spike breakout (`03_…md`), and loser-avoidance re-specified within the 5-position limit. Expect low power: 20 folds, and a 60% fold-win bar against BTC.
+3. **Revisit the constraints, not the data.** Two constraints shape the result:
+   - The 20%-per-asset cap forces an alt-heavy book, and in 2021-07..2026-06 the PIT alt universe lost 86% equal-weighted.
+   - The "beat BTC Sharpe in 60% of folds" bar is strict.
+   Relaxing either is a SPEC change and must happen *before* any new test, never after seeing results.
+
+Not recommended: tuning H1–H3 further on this data, or promoting the H1 L=50 top5 cell after the fact.
+
+## 6. Final check (SPEC §13)
+- **Organic or incentive-driven edge?** None found. The trend rules tested are behavioral/organic in origin, and they did not survive.
+- **Catalyst already priced in?** Not applicable to the rule tests. §1.2 notes that most current "disconnects" are momentum episodes, and momentum did not pay here.
+- **Does value accrue to the token?** Assessed per asset in §1.2. It was not testable point-in-time (§1.4).
+- **Beats both benchmarks after fees, slippage and taxes?** No, not even before fees (gross diagnostic). Taxes would only widen the gap: the strategies realize short-term gains, while BTC buy-and-hold defers.
+- **Any hard limit delegated to a model?** No. All limits are enforced in `edge.engine`, tested (`tests/test_engine.py`), and reviewed.
+- **Look-ahead, survivorship, overfitting?**
+  - Look-ahead: a perturbation test in the unit suite plus the reviewer's end-to-end perturbation.
+  - Survivorship: delisted products included; 3 write-offs in the benchmark; universe requires a bar on d.
+  - Overfitting: pre-registration, an 11-trial family, and the ledger. The result is negative, so overfitting could not have produced a false positive here.
+
+## WHAT COULD I BE WRONG ABOUT?
+- **"No edge" is narrower than it sounds.** It covers three trend rules under these constraints (≤ 5 names, ≤ 20% each, weekly, Coinbase USD). It says nothing about event-driven, cross-venue, or fundamental strategies, which could not be tested honestly with free data (§1.4).
+- **The constraints may decide the outcome.** With a 20% cap, beating BTC's Sharpe requires alts to add value, and over 2021–26 the PIT alt universe lost 86% equal-weighted. A BTC-dominant trend overlay was not testable within the SPEC (the H1-btc cells hold only 18%). Its Sharpe of 0.51 at L=50 hints that it might match BTC, with p = 0.46.
+- **Fold-level Sharpe over 91 days is noisy,** and "strictly beat both benchmarks in ≥ 60% of folds" is a demanding bar. A true modest edge could fail it. Here, though, aggregate Sharpe and p-values fail too, so the verdict does not hinge on criterion 1.
+- **The drawdown-breaker reset assumption** (operator reset every quarter) shapes criterion 2. A never-reset breaker would sit in cash after the first breach. Different policies would change the drawdown numbers, but not the Sharpe-based failures.
+- **Fills at the next open with 0.2% slippage** may be optimistic for the smallest names at 00:00 UTC. The strategies already fail gross, so this only strengthens the verdict.
+- **The data comes from a single venue** (Coinbase). Prices were not cross-checked against another source.
+- **The universe ignores USDC/USDT-quoted volume.** Some delisted products may have been removed from `/products` entirely (SPEC §4.4).
+- **Bugs may remain.** Five were found and fixed after run 1. Run 1 → run 2 changed H1's Sharpe by 0.34 without changing any verdict. The engine matches an independent vectorized computation for the benchmarks, but not every strategy path is cross-checked that way.
+- **Hindsight.** I (the analyst) broadly know crypto's 2021–24 history. That may have shaped which hypotheses were chosen. Here it favored trend rules, which failed, so it did not produce a false positive. It still means the out-of-sample split is not a truly unseen test.
+- **One market era.** Five years, dominated by the 2022 bear market and persistent alt underperformance, gives low power and limited regime diversity. The current regime (§1.1, early uptrend) could favor trend rules going forward. This data cannot show that, and assuming it would be speculation.

@@ -1,29 +1,36 @@
 # PROGRESS
 
 ## Current phase
-Phase 1 (Frame). SPEC.md is drafted on branch `phase-1-spec` (worktree `.worktrees/phase-1-spec`). **Blocked: waiting for operator approval of SPEC.md.**
+**Phase 2 (edge test) is complete.** Verdict: **NO EDGE** for H1, H2 and H3 (EDGE_REPORT.md §5).
+**Blocked: waiting for the operator's decision** at the Phase 2 gate. Per SPEC kill criterion 1, Phases 3–6 do not proceed.
 
 ## Process note
-The superpowers skills (using-superpowers, brainstorming, writing-plans, using-git-worktrees, TDD, etc.) are not installed in this environment. Their intent is followed manually, and each use is announced in the session.
+The superpowers skills are not installed in this environment. Their intent is followed manually:
+- brainstorming
+- writing-plans (docs/plans/phase-2.md)
+- git worktrees (one per phase)
+- TDD (51 tests, each written first)
+- parallel agents (4 research tracks)
+- systematic debugging (engine cross-check, fragility analysis)
+- code review (reviewer agent; 5 findings, all fixed)
 
-## Decisions (proposed in SPEC.md, pending approval)
-- **Venue:** Coinbase Advanced is primary. Kraken is the fallback; its fees are about 0.10% per side lower, but Coinbase's public API is better for survivorship-safe history.
-- **Universe rank proxy:** 30-day Coinbase USD dollar volume, because free point-in-time market-cap history is not available. Checked against CoinGecko market cap over the trailing 365 days.
-- **Cost model:**
-  - Base: 0.60% fee + 0.20% slippage per side.
-  - Stress: both doubled, which is higher than an all-taker scenario at 0.90% + 0.20%.
-- **Multiple-testing correction:** Holm–Bonferroni over every trial in the ledger, on stationary-bootstrap p-values. The Deflated Sharpe Ratio is reported but does not gate.
-- **Risk-exit timing:** risk-driven exits can happen on any day; probability exits (below 0.52) happen weekly; max hold is re-gated at day 28.
-- **Drawdown breach:** flatten, then stay halted until the operator manually resets.
-- **Delisting haircut in backtests:** 10%.
+## Decisions (Phase 2)
+- **Pre-registration:** committed at `c24ad22`. H1 BTC trend gate, H2 per-asset trend, H3 trend composite. The Holm family is the 11 base-cost out-of-sample trials.
+- **Why only price/volume rules:** fundamental/valuation/unlock hypotheses were rejected as not honestly backtestable with free point-in-time data (EDGE_REPORT §1.4).
+- **Canonical run:** `9446793`, after the review fixes. Run 1 (`d216e6e`) is kept in the ledger.
 
 ## Measured facts
-Reproduce with `research/00_universe_feasibility.py`.
-- Coinbase lists 86 delisted USD products and still serves their daily candles.
-- Since 2021, 9–81 assets per month-end clear the $5M 30-day ADV filter (median 33). In 2026 the range is 15–28.
+- **Benchmarks** (out-of-sample 2021-07..2026-06, net):
+  - BTC buy-and-hold: Sharpe 0.47, max drawdown 77%.
+  - Equal-weight PIT universe: Sharpe −0.19, max drawdown 95%.
+- **Primaries fail on fold wins:** 20–30% against the 60% bar. Raw p = 0.88–0.97.
+- **No signal before costs either:** gross Sharpe −0.03 to 0.10 vs BTC 0.475.
 
 ## Open questions for operator
-See the Phase 1 gate message and SPEC.md items tagged [DECISION].
+Choose one of the options in EDGE_REPORT §5.1:
+1. Stop and package (recommended).
+2. Run one new pre-registered study with a fresh multiple-testing family.
+3. Revise SPEC constraints *before* any new test.
 
 ## Next step
-Once SPEC.md is approved: merge `phase-1-spec` into `main` locally, then start Phase 2 on its own branch/worktree. Phase 2 order: parallel research tracks, then pre-registered hypotheses in EDGE_REPORT.md, then walk-forward backtests.
+Waiting for the operator's decision. If option 1: polish README/EDGE_REPORT for publication. No code is pushed without approval.
