@@ -1,6 +1,6 @@
 # SPEC — crypto-edge
 
-Status: **DRAFT, awaiting operator approval (Phase 1 gate)**
+Status: **APPROVED by operator 2026-09-23 (Phase 1 gate); all [DECISION] items accepted as written**
 Date: 2026-09-23 · Branch: `phase-1-spec`
 
 Tags used below: **[MEASURED]** = reproduced by a command in this repo; **[SOURCE]** = primary/secondary source, access date 2026-09-23; **[INFERENCE]** = reasoning, not verified; **[DECISION]** = choice proposed here, needs operator approval.
